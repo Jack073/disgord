@@ -26,6 +26,45 @@ const (
 	GuildRoleCache  // updates or adds a new role
 )
 
+// Storage allows an injectable storage object. A Create method has been neglected
+// as items can be deleted to save space, so therefore, while an update of an
+// object can take place, there is no guarantee that it still exists in the store.
+// Instead AtomicPeek is introduced. A strongly consistent call that injects a
+// create lambda when the value is not found.
+//
+// There are two keys, the main key and the parent key (or cluster key). Usually
+// the parent key will be 0 - signifying redundant info. When the parentKey is set
+// it refers to a parent object: Discord sends out the JSON in a OOP design, and
+// sometimes, the children do not hold a reference to their parent and therefore a
+// situation may arise where we must refer to it. This is open for re-evaluations.
+//
+// examples: in memory storage, Redis, other storage services.
+//
+// Flow
+// When updating/creating the AtomicPeek will be called. the found / notFound should only be
+// called when no errors happen. They should signify that the request was successful. Note that during this
+// the cache is advised to be locked - strongly consistent behaviour.
+// If the notFound is called, the the cache will give the raw discord data and enforce the store to allocate it.
+type Storage interface {
+	Get(key, parentKey Snowflake) (interface{}, error)
+	AtomicPeek(key, parentKey Snowflake, found func(data interface{}), notFound func(create func(data []byte))) (interface{}, error)
+	Delete(key, parentKey Snowflake)
+}
+
+// CacheReplacementStrategy (CRS) allows for smart data eviction behaviour. The interface works as a proxy around
+// the Storage interface to gain data access insight. CRS can be turned off by using a nop CRS implementation.
+// Note that for a memory service that is shared among two or more instance should not use local CRS logic.
+// CRS is implemented on the storage location to meet memory restrictions and not crash.
+type CacheReplacementStrategy interface {
+	Get(key, parentKey Snowflake) (interface{}, error)
+	Put(key, parentKey Snowflake, cb func(data interface{}, err error))
+	Del(key, parentKey Snowflake)
+
+	GetList(keys []Snowflake, parentKey Snowflake) (interface{}, error)
+	PutList(keys []Snowflake, parentKey Snowflake, cb func(data interface{}, err error))
+	DelList(keys []Snowflake, parentKey Snowflake)
+}
+
 // Cacher gives basic cacheLink interaction options, and won't require changes when adding more cacheLink systems
 type Cacher interface {
 	Update(key cacheRegistry, v interface{}) (err error)
