@@ -119,7 +119,7 @@
 // Example of configuring the cache:
 //  discord, err := disgord.NewClient(&disgord.Config{
 //    BotToken: "my-secret-bot-token",
-//    Cache: &disgord.CacheConfig{
+//    CacheDefault: &disgord.CacheConfig{
 //              Mutable: false, // everything going in and out of the cache is deep copied
 //				// setting Mutable to true, might break your program as this is experimental and not supported.
 //
