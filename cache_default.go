@@ -26,58 +26,6 @@ const (
 	GuildRoleCache  // updates or adds a new role
 )
 
-// Cacher gives basic cacheLink interaction options, and won't require changes when adding more cacheLink systems
-type Cacher interface {
-	Update(key cacheRegistry, v interface{}) (err error)
-	Get(key cacheRegistry, id Snowflake, args ...interface{}) (v interface{}, err error)
-	DeleteChannel(channelID Snowflake)
-	DeleteGuildChannel(guildID Snowflake, channelID Snowflake)
-	AddGuildChannel(guildID Snowflake, channelID Snowflake)
-	AddGuildMember(guildID Snowflake, member *Member)
-	RemoveGuildMember(guildID Snowflake, memberID Snowflake)
-	UpdateChannelPin(channelID Snowflake, lastPinTimestamp Time)
-	UpdateMemberAndUser(guildID, userID Snowflake, data json.RawMessage)
-	DeleteGuild(guildID Snowflake)
-	DeleteGuildRole(guildID Snowflake, roleID Snowflake)
-	UpdateChannelLastMessageID(channelID Snowflake, messageID Snowflake)
-	SetGuildEmojis(guildID Snowflake, emojis []*Emoji)
-	Updates(key cacheRegistry, vs []interface{}) error
-	AddGuildRole(guildID Snowflake, role *Role)
-	UpdateGuildRole(guildID Snowflake, role *Role, messages json.RawMessage) bool
-}
-
-// emptyCache ...
-type emptyCache struct {
-	err error
-}
-
-func (c *emptyCache) Update(key cacheRegistry, v interface{}) (err error) {
-	return c.err
-}
-func (c *emptyCache) Get(key cacheRegistry, id Snowflake, args ...interface{}) (v interface{}, err error) {
-	return nil, c.err
-}
-func (c *emptyCache) DeleteChannel(channelID Snowflake)                                   {}
-func (c *emptyCache) DeleteGuildChannel(guildID Snowflake, channelID Snowflake)           {}
-func (c *emptyCache) AddGuildChannel(guildID Snowflake, channelID Snowflake)              {}
-func (c *emptyCache) AddGuildMember(guildID Snowflake, member *Member)                    {}
-func (c *emptyCache) RemoveGuildMember(guildID Snowflake, memberID Snowflake)             {}
-func (c *emptyCache) UpdateChannelPin(channelID Snowflake, lastPinTimestamp Time)         {}
-func (c *emptyCache) UpdateMemberAndUser(guildID, userID Snowflake, data json.RawMessage) {}
-func (c *emptyCache) DeleteGuild(guildID Snowflake)                                       {}
-func (c *emptyCache) DeleteGuildRole(guildID Snowflake, roleID Snowflake)                 {}
-func (c *emptyCache) UpdateChannelLastMessageID(channelID Snowflake, messageID Snowflake) {}
-func (c *emptyCache) SetGuildEmojis(guildID Snowflake, emojis []*Emoji)                   {}
-func (c *emptyCache) Updates(key cacheRegistry, vs []interface{}) error {
-	return c.err
-}
-func (c *emptyCache) AddGuildRole(guildID Snowflake, role *Role) {}
-func (c *emptyCache) UpdateGuildRole(guildID Snowflake, role *Role, messages json.RawMessage) bool {
-	return false
-}
-
-var _ Cacher = (*emptyCache)(nil)
-
 func newErrorCacheItemNotFound(id Snowflake) *ErrorCacheItemNotFound {
 	return &ErrorCacheItemNotFound{
 		info: "item with id{" + id.String() + "} was not found in cacheLink",
@@ -164,6 +112,8 @@ type CacheConfig struct {
 
 // CacheDefault is the actual cacheLink. It holds the different systems which can be tweaked using the CacheConfig.
 type CacheDefault struct {
+	*CacheNop
+
 	conf        *CacheConfig
 	immutable   bool
 	users       *crs.LFU
@@ -171,8 +121,7 @@ type CacheDefault struct {
 	channels    *crs.LFU
 	guilds      *crs.LFU
 }
-
-var _ Cacher = (*CacheDefault)(nil)
+var _ Cache = (*CacheDefault)(nil)
 
 // Updates does the same as Update. But allows for a slice of entries instead.
 func (c *CacheDefault) Updates(key cacheRegistry, vs []interface{}) (err error) {
